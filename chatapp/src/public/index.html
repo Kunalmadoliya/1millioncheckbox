@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Socket Chat</title>
+
+    <style>
+      /* MODERN RESET & VARIABLES */
+      :root {
+        --bg-main: #121418;
+        --phone-bg: #1a1d23;
+        --accent-white: #ffffff;
+        --border-color: rgba(255, 255, 255, 0.08);
+        --text-dim: #94a3b8;
+        --text-bright: #f8fafc;
+        --sender-bg: #f8fafc;
+        --receiver-bg: #2d333d;
+        --shadow-elevated: 0 20px 50px -12px rgba(0, 0, 0, 0.5);
+      }
+
+      * {
+        box-sizing: border-box;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      body {
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-main);
+        font-family:
+          "Inter",
+          -apple-system,
+          system-ui,
+          sans-serif;
+        color: var(--text-bright);
+      }
+
+      /* PHONE CONTAINER */
+      .phone {
+        width: 380px;
+        height: 720px;
+        position: relative;
+        border-radius: 40px;
+        background: var(--phone-bg);
+        border: 4px solid #2a2f37; /* Subtle frame */
+        box-shadow: var(--shadow-elevated);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        animation: phoneEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      /* HEADER - GLASSMORPHISM */
+      .header {
+        padding: 24px 20px 16px;
+        text-align: left;
+        font-size: 18px;
+        font-weight: 700;
+        background: rgba(26, 29, 35, 0.8);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--border-color);
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .header::after {
+        content: "";
+        width: 8px;
+        height: 8px;
+        background: #10b981; /* Online Indicator */
+        border-radius: 50%;
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+      }
+
+      /* MESSAGE AREA */
+      #messages {
+        list-style: none;
+        margin: 0;
+        padding: 20px;
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        scroll-behavior: smooth;
+        background-image: radial-gradient(
+          circle at 2px 2px,
+          rgba(255, 255, 255, 0.02) 1px,
+          transparent 0
+        );
+        background-size: 24px 24px;
+      }
+
+      /* MESSAGE BUBBLES */
+      #messages li {
+        position: relative;
+        max-width: 85%;
+        padding: 12px 16px;
+        font-size: 14px;
+        line-height: 1.6;
+        word-wrap: break-word;
+        animation: msgSlideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+
+      /* RECEIVER (Others) */
+      #messages li {
+        align-self: flex-start;
+        background: var(--receiver-bg);
+        color: var(--text-bright);
+        border-radius: 18px 18px 18px 4px;
+        border: 1px solid rgba(255, 255, 255, 0.03);
+      }
+
+      /* SENDER (You - nth-child logic from your original code) */
+      #messages li:nth-child(odd) {
+        align-self: flex-end;
+        background: var(--sender-bg);
+        color: #0f172a;
+        border-radius: 18px 18px 4px 18px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      /* INPUT AREA */
+      #form {
+        display: flex;
+        padding: 20px;
+        gap: 10px;
+        background: var(--phone-bg);
+        border-top: 1px solid var(--border-color);
+      }
+
+      .input-wrapper {
+        flex: 1;
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+
+      #input {
+        width: 100%;
+        background: #252a33;
+        border: 1px solid transparent;
+        border-radius: 24px;
+        padding: 12px 18px;
+        color: white;
+        font-size: 14px;
+        outline: none;
+        transition: all 0.3s ease;
+      }
+
+      #input:focus {
+        border-color: rgba(255, 255, 255, 0.2);
+        background: #2d333d;
+        box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.03);
+      }
+
+      /* BUTTON */
+      #form button {
+        background: var(--accent-white);
+        border: none;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        flex-shrink: 0;
+      }
+
+      #form button:hover {
+        transform: scale(1.05) rotate(-5deg);
+        box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+      }
+
+      #form button:active {
+        transform: scale(0.9);
+      }
+
+      /* ANIMATIONS */
+      @keyframes phoneEntrance {
+        from {
+          opacity: 0;
+          transform: translateY(30px) scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      @keyframes msgSlideUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px) scale(0.8);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      /* CUSTOM SCROLLBAR */
+      #messages::-webkit-scrollbar {
+        width: 4px;
+      }
+      #messages::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="phone">
+      <div class="header">
+        <span>Cloud Chat</span>
+      </div>
+
+      <ul id="messages"></ul>
+
+      <form id="form">
+        <div class="input-wrapper">
+          <input
+            id="input"
+            autocomplete="off"
+            placeholder="Write a message..."
+          />
+        </div>
+        <button type="submit">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </form>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const socket = io();
+
+      const form = document.getElementById("form");
+      const input = document.getElementById("input");
+      const messages = document.getElementById("messages");
+
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        if (input.value) {
+          socket.emit("user:message", input.value);
+          input.value = "";
+        }
+      });
+
+      socket.on("server:message", (msg) => {
+        console.log(msg);
+
+        const item = document.createElement("li");
+        item.textContent = msg;
+
+        messages.appendChild(item);
+        // Scroll to bottom of the messages container
+        messages.scrollTo(0, messages.scrollHeight);
+      });
+    </script>
+  </body>
+</html>
