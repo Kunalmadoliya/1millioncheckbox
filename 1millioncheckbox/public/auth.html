@@ -191,8 +191,21 @@
       const container = document.getElementById("container");
       const fragments = document.createDocumentFragment();
 
+      const CLIENT_ID = "ba9b2ae6e7fdf5946f7fd779a0b340f6";
+      const CLIENT_SECRET = "96f8b7bc3c48ebc984773966cd1f44a00882dbe31f26a205e1ca6ab8df5d1038"; // 🔥 replace
+      const REDIRECT_URI = "http://localhost:7000/auth.html";
+
       const inputs = [];
-      for (let i = 0; i < 1000000; i++) {
+
+      // ✅ FIX: single listener
+      socket.on("server:clicked", (index) => {
+        if (inputs[index]) {
+          inputs[index].checked = true;
+        }
+      });
+
+      // 🔥 render grid (keep same UI)
+      for (let i = 0; i < 1000; i++) {
         const input = document.createElement("input");
         input.type = "checkbox";
 
@@ -201,15 +214,41 @@
         input.addEventListener("click", () => {
           socket.emit("user:clicked", i);
         });
-        input.style.setProperty("--i", i);
 
-        socket.on("server:clicked", (index) => {
-          inputs[index].checked = true;
-        });
+        input.style.setProperty("--i", i);
         fragments.appendChild(input);
       }
 
       container.appendChild(fragments);
+
+      // 🔥 OAuth: handle callback
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+
+      if (code) {
+        fetch("http://localhost:3000/token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            code,
+            client_id: CLIENT_ID,
+            client_secret: CLIENT_SECRET,
+            redirect_uri: REDIRECT_URI,
+          }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            console.log("TOKEN:", data);
+
+            localStorage.setItem("access_token", data.access_token);
+
+            // 🔥 clean URL (no reload loop)
+            window.history.replaceState({}, document.title, "/auth.html");
+          })
+          .catch(console.error);
+      }
     </script>
   </body>
 </html>

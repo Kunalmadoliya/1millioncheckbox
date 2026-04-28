@@ -284,15 +284,19 @@
     </footer>
 
     <script>
-      // Efficient Spotlight Logic
-      document.querySelectorAll(".bento-card").forEach((card) => {
-        card.onmousemove = (e) => {
-          const rect = card.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const y = e.clientY - rect.top;
-          card.style.setProperty("--x", `${x}px`);
-          card.style.setProperty("--y", `${y}px`);
-        };
+      const CLIENT_ID = "ba9b2ae6e7fdf5946f7fd779a0b340f6";
+      const REDIRECT_URI = "http://localhost:7000/auth.html";
+
+      document.querySelector(".auth-btn").addEventListener("click", () => {
+        const url = new URL("http://localhost:3000/authorized");
+
+        url.searchParams.set("client_id", CLIENT_ID);
+        url.searchParams.set("redirect_uri", REDIRECT_URI);
+        url.searchParams.set("response_type", "code");
+        url.searchParams.set("scope", "openid email profile");
+        url.searchParams.set("state", "random123");
+
+        window.location.href = url.toString();
       });
     </script>
   </body>

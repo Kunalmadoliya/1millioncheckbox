@@ -21,11 +21,11 @@ async function main() {
    const __dirname = dirname(fileURLToPath(import.meta.url));
 
 
-   app.use(express.static(join(__dirname, "src")));
+   app.use(express.static(join(__dirname, "public")));
 
 
    app.get("/", (req, res) => {
-      res.sendFile(join(__dirname, "src/index.html"));
+      res.sendFile(join(__dirname, "public/index.html"));
    });
 
    server.listen(PORT, () => {
