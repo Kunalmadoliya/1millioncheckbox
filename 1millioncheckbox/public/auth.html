@@ -191,8 +191,9 @@
       const container = document.getElementById("container");
       const fragments = document.createDocumentFragment();
 
-      const CLIENT_ID = "ba9b2ae6e7fdf5946f7fd779a0b340f6";
-      const CLIENT_SECRET = "96f8b7bc3c48ebc984773966cd1f44a00882dbe31f26a205e1ca6ab8df5d1038"; // 🔥 replace
+      const CLIENT_ID = "5b5b708f38f605487328acc725a3dbda";
+      const CLIENT_SECRET =
+        "969233503a588607352c07a2f5a0ab9145d6aa62867ad8e4482d4b889a906cce";
       const REDIRECT_URI = "http://localhost:7000/auth.html";
 
       const inputs = [];
@@ -221,12 +222,17 @@
 
       container.appendChild(fragments);
 
-      // 🔥 OAuth: handle callback
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get("code");
+      function handleOAuth() {
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get("code");
 
-      if (code) {
-        fetch("http://localhost:3000/token", {
+        console.log("CODE:", code);
+
+        if (!code || sessionStorage.getItem("oauth_done")) return;
+
+        sessionStorage.setItem("oauth_done", "true");
+
+        fetch("https://sso-production-d29b.up.railway.app/token", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -242,13 +248,20 @@
           .then((data) => {
             console.log("TOKEN:", data);
 
-            localStorage.setItem("access_token", data.access_token);
+            const user = JSON.parse(atob(data.id_token.split(".")[1]));
+            localStorage.setItem("user", JSON.stringify(user));
 
-            // 🔥 clean URL (no reload loop)
+            console.log("Logged in:", user.email);
+
             window.history.replaceState({}, document.title, "/auth.html");
           })
           .catch(console.error);
       }
+
+      // 🔥 RUN MULTIPLE TIMES (THIS FIXES NEW USER FLOW)
+      handleOAuth();
+      setTimeout(handleOAuth, 300);
+      setTimeout(handleOAuth, 800);
     </script>
   </body>
 </html>
