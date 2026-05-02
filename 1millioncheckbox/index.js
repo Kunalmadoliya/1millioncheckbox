@@ -10,14 +10,32 @@ async function main() {
 
    const server = http.createServer(app);
    const io = new Server(server);
+   const check_boxes = 1000;
+
+   const state = {
+      checkboxes: new Array(check_boxes).fill(false),
+   };
 
    io.on("connection", (socket) => {
-      console.log("User connected:", socket.id);
-      socket.on("user:clicked", (index) => {
-         io.emit("server:clicked", index)
-      })
-   });
 
+      socket.emit("server:init", state.checkboxes);
+
+      socket.on("user:clicked", (data) => {
+
+        
+         state.checkboxes[data.index] = data.checked;
+
+
+         io.emit("server:checked", {
+            index: data.index,
+            checked: data.checked,
+            all: state.checkboxes
+         });
+
+         console.log("Server:", data);
+      });
+
+   });
    const __dirname = dirname(fileURLToPath(import.meta.url));
 
 
@@ -27,6 +45,10 @@ async function main() {
    app.get("/", (req, res) => {
       res.sendFile(join(__dirname, "public/index.html"));
    });
+
+   app.get('/checked', async (req, res) => {
+      return res.status(200).json({ checkboxes: state.checkboxes })
+   })
 
    server.listen(PORT, () => {
       console.log(`Server running at http://localhost:${PORT}`);

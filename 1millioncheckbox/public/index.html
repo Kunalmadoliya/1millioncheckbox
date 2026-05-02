@@ -284,11 +284,13 @@
     </footer>
 
     <script>
-      const CLIENT_ID = "4c38d7fdc1a0b6e3912b6e9214fe19c4";
+      const CLIENT_ID = "7c82a96eed133aa03d4b32699c8a0baf";
       const REDIRECT_URI = "http://localhost:7000/auth.html";
 
       document.querySelector(".auth-btn").addEventListener("click", () => {
-        const url = new URL("https://sso-production-d29b.up.railway.app/oauth/authorize");
+        const url = new URL(
+          "https://sso-production-d29b.up.railway.app/oauth/authorize",
+        );
         url.searchParams.set("client_id", CLIENT_ID);
         url.searchParams.set("redirect_uri", REDIRECT_URI);
         url.searchParams.set("response_type", "code");

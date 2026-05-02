@@ -189,79 +189,48 @@
     <script>
       const socket = io();
       const container = document.getElementById("container");
-      const fragments = document.createDocumentFragment();
 
-      const CLIENT_ID = "5b5b708f38f605487328acc725a3dbda";
+      const CLIENT_ID = "7c82a96eed133aa03d4b32699c8a0baf";
       const CLIENT_SECRET =
-        "969233503a588607352c07a2f5a0ab9145d6aa62867ad8e4482d4b889a906cce";
+        "76c51d86328d0315b49dbe1b8503c8a39fbb50b4da27920c059b8479168978df";
       const REDIRECT_URI = "http://localhost:7000/auth.html";
 
-      const inputs = [];
+      const user = JSON.parse(localStorage.getItem("user"));
+      const {sub} = user;
 
-      // ✅ FIX: single listener
-      socket.on("server:clicked", (index) => {
-        if (inputs[index]) {
-          inputs[index].checked = true;
+      window.addEventListener("load", async () => {
+        const res = await fetch("/checked");
+        const data = await res.json();
+
+        if (data && data?.checkboxes) {
+          data.checkboxes.forEach((server, i) => {
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.id = `checkbox-${i}`;
+
+            checkbox.checked = server;
+
+            checkbox.addEventListener("change", () => {
+              socket.emit("user:clicked", {
+                index: i,
+                checked: checkbox.checked, // ✅ FIXED
+              });
+            });
+
+            container.append(checkbox);
+          });
         }
       });
 
-      // 🔥 render grid (keep same UI)
-      for (let i = 0; i < 1000; i++) {
-        const input = document.createElement("input");
-        input.type = "checkbox";
+      socket.on("server:checked", (data) => {
+        const {index, checked} = data;
 
-        inputs.push(input);
+        const checkbox = document.getElementById(`checkbox-${index}`);
 
-        input.addEventListener("click", () => {
-          socket.emit("user:clicked", i);
-        });
-
-        input.style.setProperty("--i", i);
-        fragments.appendChild(input);
-      }
-
-      container.appendChild(fragments);
-
-      function handleOAuth() {
-        const params = new URLSearchParams(window.location.search);
-        const code = params.get("code");
-
-        console.log("CODE:", code);
-
-        if (!code || sessionStorage.getItem("oauth_done")) return;
-
-        sessionStorage.setItem("oauth_done", "true");
-
-        fetch("https://sso-production-d29b.up.railway.app/token", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            code,
-            client_id: CLIENT_ID,
-            client_secret: CLIENT_SECRET,
-            redirect_uri: REDIRECT_URI,
-          }),
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            console.log("TOKEN:", data);
-
-            const user = JSON.parse(atob(data.id_token.split(".")[1]));
-            localStorage.setItem("user", JSON.stringify(user));
-
-            console.log("Logged in:", user.email);
-
-            window.history.replaceState({}, document.title, "/auth.html");
-          })
-          .catch(console.error);
-      }
-
-      // 🔥 RUN MULTIPLE TIMES (THIS FIXES NEW USER FLOW)
-      handleOAuth();
-      setTimeout(handleOAuth, 300);
-      setTimeout(handleOAuth, 800);
+        if (checkbox) {
+          checkbox.checked = checked;
+        }
+      });
     </script>
   </body>
 </html>
