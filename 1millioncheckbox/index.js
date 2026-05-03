@@ -63,16 +63,25 @@ async function main() {
    });
 
    const RATE_LIMIT_WINDOW = 1000;
-   const RATE_LIMIT_MAX = 20;
+   const RATE_LIMIT_MAX = 2;
+   const BLOCK_TIME = 3000;
 
    io.on("connection", (socket) => {
       socket.emit("server:init", state);
 
       let count = 0;
       let lastReset = Date.now();
+      let blockedUntil = 0;
 
       socket.on("user:clicked", async (data) => {
          const now = Date.now();
+
+         if (now < blockedUntil) {
+            socket.emit("rate_limit:error", {
+               message: "Too many requests. Please wait.",
+            });
+            return;
+         }
 
          if (now - lastReset > RATE_LIMIT_WINDOW) {
             count = 0;
@@ -81,12 +90,25 @@ async function main() {
 
          count++;
 
-         if (count > RATE_LIMIT_MAX) return;
+         if (count > RATE_LIMIT_MAX) {
+            blockedUntil = now + BLOCK_TIME;
+
+            socket.emit("rate_limit:error", {
+               message: "Rate limit exceeded. Temporarily blocked.",
+            });
+
+            return;
+         }
 
          if (
             typeof data.index !== "number" ||
             typeof data.checked !== "boolean"
-         ) return;
+         ) {
+            socket.emit("rate_limit:error", {
+               message: "Invalid data format",
+            });
+            return;
+         }
 
          await publisher.publish(
             "internal-server:checkbox",

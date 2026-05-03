@@ -196,13 +196,19 @@
       const REDIRECT_URI =
         "https://1millioncheckbox-production.up.railway.app/auth.html";
 
+      let isBlocked = false;
+      const LOCAL_RATE_LIMIT = {
+        windowMs: 1000,
+        max: 2,
+      };
+
+      let count = 0;
+      let lastReset = Date.now();
+
       function handleOAuth() {
         const params = new URLSearchParams(window.location.search);
         const code = params.get("code");
 
-        console.log("CODE:", code);
-
-        // If no code exists, or we already processed it, stop here.
         if (!code || sessionStorage.getItem("oauth_done")) return;
 
         sessionStorage.setItem("oauth_done", "true");
@@ -221,26 +227,76 @@
         })
           .then((res) => res.json())
           .then((data) => {
-            console.log("TOKEN:", data);
-
-            // Extract User Info and save it
             const user = JSON.parse(atob(data.id_token.split(".")[1]));
             localStorage.setItem("user", JSON.stringify(user));
-
-            console.log("Logged in:", user.email);
-
-            // Clean the URL bar so the "?code=" disappears
             window.history.replaceState({}, document.title, "/auth.html");
           })
           .catch(console.error);
       }
 
-      // 🔥 RUN MULTIPLE TIMES (THIS FIXES NEW USER FLOW)
       handleOAuth();
       setTimeout(handleOAuth, 300);
       setTimeout(handleOAuth, 800);
+
+      function showError(message) {
+        let el = document.getElementById("rate-error");
+
+        if (!el) {
+          el = document.createElement("div");
+          el.id = "rate-error";
+          el.style.position = "fixed";
+          el.style.top = "20px";
+          el.style.right = "20px";
+          el.style.padding = "10px 16px";
+          el.style.background = "black";
+          el.style.color = "white";
+          el.style.borderRadius = "8px";
+          el.style.fontSize = "12px";
+          document.body.appendChild(el);
+        }
+
+        el.textContent = message;
+        el.style.opacity = "1";
+
+        setTimeout(() => {
+          el.style.opacity = "0";
+        }, 2000);
+      }
+
+      function canClick() {
+        const now = Date.now();
+
+        if (isBlocked) {
+          showError("Blocked. Slow down.");
+          return false;
+        }
+
+        if (now - lastReset > LOCAL_RATE_LIMIT.windowMs) {
+          count = 0;
+          lastReset = now;
+        }
+
+        count++;
+
+        if (count > LOCAL_RATE_LIMIT.max) {
+          isBlocked = true;
+          showError("Too many clicks. Temporarily blocked.");
+
+          setTimeout(() => {
+            isBlocked = false;
+            count = 0;
+          }, 2000);
+
+          return false;
+        }
+
+        return true;
+      }
+
       window.addEventListener("load", async () => {
-        const res = await fetch("https://1millioncheckbox-production.up.railway.app/checked");
+        const res = await fetch(
+          "https://1millioncheckbox-production.up.railway.app/checked",
+        );
         const data = await res.json();
 
         if (data && data.checkboxes) {
@@ -251,6 +307,11 @@
             checkbox.checked = server;
 
             checkbox.addEventListener("change", () => {
+              if (!canClick()) {
+                checkbox.checked = !checkbox.checked;
+                return;
+              }
+
               socket.emit("user:clicked", {
                 index: i,
                 checked: checkbox.checked,
@@ -276,6 +337,10 @@
             checkbox.checked = checked;
           }
         });
+      });
+
+      socket.on("rate_limit:error", (data) => {
+        showError(data.message);
       });
     </script>
   </body>
