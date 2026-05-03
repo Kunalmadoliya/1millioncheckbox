@@ -240,7 +240,7 @@
       setTimeout(handleOAuth, 300);
       setTimeout(handleOAuth, 800);
       window.addEventListener("load", async () => {
-        const res = await fetch("/checked");
+        const res = await fetch("https://1millioncheckbox-production.up.railway.app/checked");
         const data = await res.json();
 
         if (data && data.checkboxes) {
