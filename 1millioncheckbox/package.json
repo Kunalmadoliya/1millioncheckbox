@@ -11,8 +11,10 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@socket.io/redis-adapter": "^8.3.0",
     "cookie-parser": "^1.4.7",
     "express": "^5.2.1",
+    "ioredis": "^5.10.1",
     "socket.io": "^4.8.3"
   }
 }

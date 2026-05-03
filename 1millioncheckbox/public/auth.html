@@ -190,30 +190,21 @@
       const socket = io();
       const container = document.getElementById("container");
 
-      const CLIENT_ID = "7c82a96eed133aa03d4b32699c8a0baf";
-      const CLIENT_SECRET =
-        "76c51d86328d0315b49dbe1b8503c8a39fbb50b4da27920c059b8479168978df";
-      const REDIRECT_URI = "http://localhost:7000/auth.html";
-
-      const user = JSON.parse(localStorage.getItem("user"));
-      const {sub} = user;
-
       window.addEventListener("load", async () => {
         const res = await fetch("/checked");
         const data = await res.json();
 
-        if (data && data?.checkboxes) {
+        if (data && data.checkboxes) {
           data.checkboxes.forEach((server, i) => {
             const checkbox = document.createElement("input");
             checkbox.type = "checkbox";
             checkbox.id = `checkbox-${i}`;
-
             checkbox.checked = server;
 
             checkbox.addEventListener("change", () => {
               socket.emit("user:clicked", {
                 index: i,
-                checked: checkbox.checked, // ✅ FIXED
+                checked: checkbox.checked,
               });
             });
 
@@ -222,14 +213,22 @@
         }
       });
 
-      socket.on("server:checked", (data) => {
-        const {index, checked} = data;
-
+      // ✅ real-time update
+      socket.on("server:checked", ({index, checked}) => {
         const checkbox = document.getElementById(`checkbox-${index}`);
-
         if (checkbox) {
           checkbox.checked = checked;
         }
+      });
+
+   
+      socket.on("server:init", (checkboxes) => {
+        checkboxes.forEach((checked, i) => {
+          const checkbox = document.getElementById(`checkbox-${i}`);
+          if (checkbox) {
+            checkbox.checked = checked;
+          }
+        });
       });
     </script>
   </body>
