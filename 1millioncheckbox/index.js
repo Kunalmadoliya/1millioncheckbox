@@ -1,26 +1,28 @@
+import "dotenv/config";
 import http from "http";
 import express from "express";
 import { Server } from "socket.io";
 import { createAdapter } from "@socket.io/redis-adapter";
-import Redis from "ioredis";
-import { publisher } from "./redis-connection.js";
+import {
+   publisher,
+   pubClient,
+   subClient,
+   redisSub,
+} from "./redis-connection.js";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 async function main() {
-   const PORT = 7000;
+   const PORT = process.env.PORT || 7000;
    const app = express();
 
    const server = http.createServer(app);
    const io = new Server(server);
 
-   // ✅ Redis clients for Socket.IO adapter
-   const pubClient = new Redis();
-   const subClient = new Redis();
+   // ✅ use shared Redis clients (no new Redis())
    io.adapter(createAdapter(pubClient, subClient));
 
-   // ✅ Redis client for your checkbox channel
-   const redisSub = new Redis();
+   // ✅ subscribe once
    await redisSub.subscribe("internal-server:checkbox");
 
    const TOTAL = 1000;
@@ -29,7 +31,7 @@ async function main() {
       checkboxes: new Array(TOTAL).fill(false),
    };
 
-   // ✅ Listen to Redis messages
+   // ✅ listen for Redis messages
    redisSub.on("message", (channel, message) => {
       if (channel !== "internal-server:checkbox") return;
       if (!message) return;
@@ -50,11 +52,10 @@ async function main() {
 
       state.checkboxes[index] = checked;
 
-      // ✅ broadcast to all clients (works across servers)
       io.emit("server:checked", { index, checked });
    });
 
-   // ✅ Socket connection
+   // ✅ socket connection
    io.on("connection", (socket) => {
       socket.emit("server:init", state.checkboxes);
 
@@ -71,7 +72,7 @@ async function main() {
       });
    });
 
-   // ✅ Static setup
+   // ✅ static setup
    const __dirname = dirname(fileURLToPath(import.meta.url));
    app.use(express.static(join(__dirname, "public")));
 
@@ -83,7 +84,6 @@ async function main() {
       res.json({ checkboxes: state.checkboxes });
    });
 
-   // ✅ Start server
    server.listen(PORT, () => {
       console.log(`Server running at http://localhost:${PORT}`);
    });

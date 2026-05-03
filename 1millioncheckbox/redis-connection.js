@@ -1,21 +1,27 @@
 import Redis from "ioredis";
 
 function createRedisConnection() {
-  return new Redis({
-    host: "localhost",
-    port: 6379,
-  });
+  if (!process.env.REDIS_URL) {
+    console.warn("⚠️ REDIS_URL not found, falling back to localhost");
+    return new Redis({
+      host: "127.0.0.1",
+      port: 6379,
+    });
+  }
+
+  // ✅ Railway / production
+  return new Redis(process.env.REDIS_URL);
 }
 
-// ✅ for publishing events
+// ✅ publisher (for emitting events)
 export const publisher = createRedisConnection();
 
-// ❗ do NOT reuse this everywhere blindly
+// ✅ subscriber (general purpose if needed)
 export const subscriber = createRedisConnection();
 
-// ✅ dedicated for Socket.IO adapter (important)
+// ✅ Socket.IO adapter clients
 export const pubClient = createRedisConnection();
 export const subClient = createRedisConnection();
 
-// ✅ dedicated for your custom channel
+// ✅ custom channel subscriber
 export const redisSub = createRedisConnection();
