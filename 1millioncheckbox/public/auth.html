@@ -190,6 +190,55 @@
       const socket = io();
       const container = document.getElementById("container");
 
+      const CLIENT_ID = "293976e8d03b2e67cb7d3e1ab6605609";
+      const CLIENT_SECRET =
+        "11bdcec0d98da793aac4e8adb886f67edf82c13b8628b864eb3ff03f96855404";
+      const REDIRECT_URI =
+        "https://1millioncheckbox-production.up.railway.app/auth.html";
+
+      function handleOAuth() {
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get("code");
+
+        console.log("CODE:", code);
+
+        // If no code exists, or we already processed it, stop here.
+        if (!code || sessionStorage.getItem("oauth_done")) return;
+
+        sessionStorage.setItem("oauth_done", "true");
+
+        fetch("https://sso-production-d29b.up.railway.app/token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            code,
+            client_id: CLIENT_ID,
+            client_secret: CLIENT_SECRET,
+            redirect_uri: REDIRECT_URI,
+          }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            console.log("TOKEN:", data);
+
+            // Extract User Info and save it
+            const user = JSON.parse(atob(data.id_token.split(".")[1]));
+            localStorage.setItem("user", JSON.stringify(user));
+
+            console.log("Logged in:", user.email);
+
+            // Clean the URL bar so the "?code=" disappears
+            window.history.replaceState({}, document.title, "/auth.html");
+          })
+          .catch(console.error);
+      }
+
+      // 🔥 RUN MULTIPLE TIMES (THIS FIXES NEW USER FLOW)
+      handleOAuth();
+      setTimeout(handleOAuth, 300);
+      setTimeout(handleOAuth, 800);
       window.addEventListener("load", async () => {
         const res = await fetch("/checked");
         const data = await res.json();
@@ -213,7 +262,6 @@
         }
       });
 
-      // ✅ real-time update
       socket.on("server:checked", ({index, checked}) => {
         const checkbox = document.getElementById(`checkbox-${index}`);
         if (checkbox) {
@@ -221,7 +269,6 @@
         }
       });
 
-   
       socket.on("server:init", (checkboxes) => {
         checkboxes.forEach((checked, i) => {
           const checkbox = document.getElementById(`checkbox-${i}`);
