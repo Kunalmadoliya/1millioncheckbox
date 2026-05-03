@@ -8,6 +8,7 @@ import {
    pubClient,
    subClient,
    redisSub,
+   redis,
 } from "./redis-connection.js";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -19,20 +20,24 @@ async function main() {
    const server = http.createServer(app);
    const io = new Server(server);
 
-   // ✅ use shared Redis clients (no new Redis())
    io.adapter(createAdapter(pubClient, subClient));
 
-   // ✅ subscribe once
+   const TOTAL = 1000;
+   const CHECKBOX_STATE = "checkbox-state";
+
+   let state;
+   const existing = await redis.get(CHECKBOX_STATE);
+
+   if (existing) {
+      state = JSON.parse(existing);
+   } else {
+      state = new Array(TOTAL).fill(false);
+      await redis.set(CHECKBOX_STATE, JSON.stringify(state));
+   }
+
    await redisSub.subscribe("internal-server:checkbox");
 
-   const TOTAL = 1000;
-
-   const state = {
-      checkboxes: new Array(TOTAL).fill(false),
-   };
-
-   // ✅ listen for Redis messages
-   redisSub.on("message", (channel, message) => {
+   redisSub.on("message", async (channel, message) => {
       if (channel !== "internal-server:checkbox") return;
       if (!message) return;
 
@@ -50,16 +55,34 @@ async function main() {
 
       const { index, checked } = parsed;
 
-      state.checkboxes[index] = checked;
+      state[index] = checked;
+
+      await redis.set(CHECKBOX_STATE, JSON.stringify(state));
 
       io.emit("server:checked", { index, checked });
    });
 
-   // ✅ socket connection
+   const RATE_LIMIT_WINDOW = 1000;
+   const RATE_LIMIT_MAX = 20;
+
    io.on("connection", (socket) => {
-      socket.emit("server:init", state.checkboxes);
+      socket.emit("server:init", state);
+
+      let count = 0;
+      let lastReset = Date.now();
 
       socket.on("user:clicked", async (data) => {
+         const now = Date.now();
+
+         if (now - lastReset > RATE_LIMIT_WINDOW) {
+            count = 0;
+            lastReset = now;
+         }
+
+         count++;
+
+         if (count > RATE_LIMIT_MAX) return;
+
          if (
             typeof data.index !== "number" ||
             typeof data.checked !== "boolean"
@@ -72,7 +95,6 @@ async function main() {
       });
    });
 
-   // ✅ static setup
    const __dirname = dirname(fileURLToPath(import.meta.url));
    app.use(express.static(join(__dirname, "public")));
 
@@ -80,8 +102,9 @@ async function main() {
       res.sendFile(join(__dirname, "public/index.html"));
    });
 
-   app.get("/checked", (req, res) => {
-      res.json({ checkboxes: state.checkboxes });
+   app.get("/checked", async (req, res) => {
+      const data = await redis.get(CHECKBOX_STATE);
+      res.json({ checkboxes: JSON.parse(data) });
    });
 
    server.listen(PORT, "0.0.0.0", () => {

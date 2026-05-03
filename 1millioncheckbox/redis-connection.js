@@ -33,6 +33,8 @@ export const publisher = createRedisConnection("publisher");
 // ✅ optional general subscriber
 export const subscriber = createRedisConnection("subscriber");
 
+export const redis = createRedisConnection()
+
 // ✅ Socket.IO adapter (must be separate)
 export const pubClient = createRedisConnection("pubClient");
 export const subClient = createRedisConnection("subClient");
